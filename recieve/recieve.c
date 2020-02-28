@@ -199,7 +199,7 @@ int main(int argc , char *argv[])
                 else
                 {
                     // Do something with the recieved bufer values
-                    printf( "valread--%d\n", valread );
+                    /*printf( "valread--%d\n", valread );*/
                     printf( "%s\n", buffer );
 
                     pch = strtok( buffer, "/" );
