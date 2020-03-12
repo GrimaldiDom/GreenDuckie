@@ -91,10 +91,12 @@ class Ui_MainWindow( QMainWindow  ):
                         pwr = entry["power"]
                         locations[i][j] = pwr
 
-            # if( len( [x for x in y for y in locations[x][y] if locations[x][y] == 0 ] ) ):
-            if( len( [x for x in y[x] for y in locations[y] if y[x] == 0 ] ) ):
+            # There should only ever be 4 elements with 0 as their power, and those should be the ones
+            # trying to measure thier own power.
+            # This if statement counts the number of 0s in the array and breaks if the number of zeros is 4
+            if( len( [ y for x in locations for y in x if y != 0] ) == 4 ):
                 print("Yes")
-                pass
+                break
 
 
 
