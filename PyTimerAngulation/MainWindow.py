@@ -70,8 +70,7 @@ class Ui_MainWindow( QMainWindow  ):
         # This function initializes the base station locations #
         # and draws them on the screen                         #
         ########################################################
-        locations = [[0]*len(self.MACS.keys())]*len(self.MACS.keys())  # First row will be a's powers for other objects
-                        # Second will be b's power and so on
+        stations = {}
 
         # Test Values
         """
@@ -80,24 +79,33 @@ class Ui_MainWindow( QMainWindow  ):
         "7F:06:41:BB:45:5C"
         """
         while( True ):
-            for i, recv_Station in enumerate( self.MACS.keys() ):        # Station that detects sample packet
-                for j, emit_Station in enumerate( self.MACS.keys() ):    # Station that emits sample packet
+            for recv_Station in self.MACS.keys():        # Station that detects sample packet
+                for emit_Station in self.MACS.keys():    # Station that emits sample packet
                     # One of these on each run should not find anything since it's trying to find its own blutooth packets
                     entry = self.DB.getNewestEntryByMac( recv_Station, self.MACS[ emit_Station ] )
                     if( entry == None ):
-                        locations[i][j] = 0
-                        continue
+                        pwr = 0
                     else:
                         pwr = entry["power"]
-                        locations[i][j] = pwr
+
+                    if( recv_Station not in stations.keys() ):
+                        stations[recv_Station] = {}
+
+                    if( emit_Station not in stations[recv_Station].keys() ):
+                        stations[recv_Station][emit_Station] = {}
+
+                    stations[recv_Station][emit_Station] = { "power": pwr }
+
 
             # There should only ever be 4 elements with 0 as their power, and those should be the ones
             # trying to measure thier own power.
-            # This if statement counts the number of 0s in the array and breaks if the number of zeros is 4
-            if( len( [ y for x in locations for y in x if y != 0] ) == 4 ):
+            # This if statement counts the number of 0s in the powers of the dictionary and breaks if the number of zeros is 4
+            if( len( [ y for x in stations.keys() for y in stations[x].keys() if stations[x][y]["power"] != 0] ) == 4 ):
                 print("Yes")
                 break
 
+    def PowerToDistance( self, power ):
+        return( (power+42.183)/(-5.6743) ) # Estimated linear function
 
 
 if __name__ == "__main__":
