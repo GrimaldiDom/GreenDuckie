@@ -116,7 +116,7 @@ class Tracker:
     def getTrackedObjectsLayout( self ):
         l_tracked_objects = {}
 
-        for tracking_mac in self.TRACKING_MACS.keys():          # MAC we are tracking
+        for tracking_mac in self.TRACKING_MACS:          # MAC we are tracking
             for recv_Station in self.STATION_MACS.keys():        # Station that detects sample packet
                 # One of these on each run should not find anything since it's trying to find its own blutooth packets
                 entry = self.DB.getNewestEntryByMac( recv_Station, tracking_mac )
@@ -134,31 +134,38 @@ class Tracker:
 
                 l_tracked_objects[tracking_mac][recv_Station] = { "power": pwr, "distance": self.PowerToDistance(pwr) }
 
+        macs_to_remove = []
         for tracking_mac in l_tracked_objects.keys():
             for recv_Station in l_tracked_objects[tracking_mac].keys():
                 # if any of the recieving stations don't have a power for an object to track, it can't be tracked
                 if l_tracked_objects[ tracking_mac ][recv_Station]["power"] == None:
-                    del l_tracked_objects[ tracking_mac ]
+                    macs_to_remove.append( tracking_mac )
+                    macs_to_remove = list( set( macs_to_remove ) )
+
+        for mac in macs_to_remove:
+            del l_tracked_objects[mac]
 
         for tracking_mac in l_tracked_objects.keys():
             # Gets the keys in an array so we can manually pull out the 3 distances separately
             nodes = [ x for x in self.STATION_MACS.keys() ]
 
-            distances = [
-                l_tracked_objects[nodes[0]]["distance"],
-                l_tracked_objects[nodes[1]]["distance"],
-                l_tracked_objects[nodes[2]]["distance"],
-            ]
-
-            position = self.getTrackedLocation( distances, self.node_triangle )
+            position = self.getTrackedLocation( l_tracked_objects[tracking_mac], self.node_triangle )
 
             self.tracked_objects[tracking_mac] = position
 
         return( self.tracked_objects )
 
+    def getTrackedLocation( self, object_pwrs ):
+        for recv_Station in object_pwrs.keys():        # Station that detects sample packet
+
+
+
+
 
     @staticmethod
     def PowerToDistance( power ):
+        if( power == None ):
+            return None
         return( (power+42.183)/(-5.6743) ) # Estimated linear function
 
     @staticmethod
