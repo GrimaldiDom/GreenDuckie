@@ -12,6 +12,9 @@ class Tracker:
         # 10 Second timeout
         self.timeout = 10
 
+        # Dictionary of things to be tracked with MACs as key and coordinantes as values
+        self.tracked_objects = {}
+
         self.DB = Database()
 
         # Running actual program
@@ -111,7 +114,48 @@ class Tracker:
         return( self.node_triangle )
 
     def getTrackedObjectsLayout( self ):
-        pass
+        l_tracked_objects = {}
+
+        for tracking_mac in self.TRACKING_MACS.keys():          # MAC we are tracking
+            for recv_Station in self.STATION_MACS.keys():        # Station that detects sample packet
+                # One of these on each run should not find anything since it's trying to find its own blutooth packets
+                entry = self.DB.getNewestEntryByMac( recv_Station, tracking_mac )
+                if( entry == None ):
+                    pwr = None
+                else:
+                    pwr = entry["power"]
+
+                if( tracking_mac not in l_tracked_objects.keys() ):
+                    l_tracked_objects[tracking_mac] = {}
+
+                if( recv_Station not in l_tracked_objects[tracking_mac].keys() ):
+                    l_tracked_objects[tracking_mac][recv_Station] = {}
+
+
+                l_tracked_objects[tracking_mac][recv_Station] = { "power": pwr, "distance": self.PowerToDistance(pwr) }
+
+        for tracking_mac in l_tracked_objects.keys():
+            for recv_Station in l_tracked_objects[tracking_mac].keys():
+                # if any of the recieving stations don't have a power for an object to track, it can't be tracked
+                if l_tracked_objects[ tracking_mac ][recv_Station]["power"] == None:
+                    del l_tracked_objects[ tracking_mac ]
+
+        for tracking_mac in l_tracked_objects.keys():
+            # Gets the keys in an array so we can manually pull out the 3 distances separately
+            nodes = [ x for x in self.STATION_MACS.keys() ]
+
+            distances = [
+                l_tracked_objects[nodes[0]]["distance"],
+                l_tracked_objects[nodes[1]]["distance"],
+                l_tracked_objects[nodes[2]]["distance"],
+            ]
+
+            position = self.getTrackedLocation( distances, self.node_triangle )
+
+            self.tracked_objects[tracking_mac] = position
+
+        return( self.tracked_objects )
+
 
     @staticmethod
     def PowerToDistance( power ):
