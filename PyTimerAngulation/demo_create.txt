@@ -1,0 +1,15 @@
+CREATE TABLE power(id INT PRIMARY_KEY AUTO_INCREMENT,time INT, station TEXT,mac TEXT,power INT);
+
+INSERT INTO power(time,station,mac,power) VALUES(0,'A','B8:27:EB:D6:34:B0',-61);
+INSERT INTO power(time,station,mac,power) VALUES(0,'A','B8:27:EB:D9:62:02',-54);
+
+INSERT INTO power(time,station,mac,power) VALUES(0,'C','B8:27:EB:5C:29:06',-66);
+INSERT INTO power(time,station,mac,power) VALUES(0,'C','B8:27:EB:D9:62:02',-62);
+
+INSERT INTO power(time,station,mac,power) VALUES(0,'D','B8:27:EB:5C:29:06',-63);
+INSERT INTO power(time,station,mac,power) VALUES(0,'D','B8:27:EB:D6:34:B0',-60);
+
+INSERT INTO power(time,station,mac,power) VALUES(0,'A','B8:27:EB:D6:34:FF',-50); 
+INSERT INTO power(time,station,mac,power) VALUES(0,'B','B8:27:EB:D6:34:FF',-55); 
+INSERT INTO power(time,station,mac,power) VALUES(0,'C','B8:27:EB:D6:34:FF',-57); 
+INSERT INTO power(time,station,mac,power) VALUES(0,'D','B8:27:EB:D6:34:FF',-54); 

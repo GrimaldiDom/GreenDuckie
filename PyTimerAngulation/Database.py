@@ -1,15 +1,15 @@
 import sqlite3, os
 from datetime import datetime
 from sqlite3 import Error
+from Logs import Logs
 class Database:
     def __init__( self, database_filename=None ):
-
-        self.log = None # Intializes log to none
+        self.log = Logs().getLog()
 
         if( database_filename != None ):
             self.database_filename = database_filename
         else:
-            self.database_filename = "test.db"
+            self.database_filename = "demo.db"
 
         init_database = True if( not os.path.exists( self.database_filename ) or not os.path.getsize( self.database_filename) > 0  ) else False
         # path can equal either :memory: or a database file
@@ -41,15 +41,12 @@ class Database:
             print(e)
             print( "Executing sql command was unsuccessful..." )
 
-    def setLog( self, log ):
-        self.log = log
-
     def getNewestEntryByMac( self, station, MAC ):
         ############################################################
         # Returns sql information for given MAC in dictionary form #
         ############################################################
-        sql = "SELECT * FROM power WHERE mac=?"
-        response = self.sql_exec( sql, (MAC,) ).fetchone()
+        sql = "SELECT * FROM power WHERE mac=? AND station=?"
+        response = self.sql_exec( sql, (MAC,station) ).fetchone()
         if( response == None ):
             return None
         final = { "id":response["id"], "station":response["station"], "mac":response["mac"], "power":response["power"] }
