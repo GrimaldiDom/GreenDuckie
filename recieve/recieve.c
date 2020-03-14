@@ -209,7 +209,7 @@ int main(int argc , char *argv[])
                     mac = strtok (NULL, "/");
                     power = strtok (NULL, "/");
 
-                    sprintf( sql_in, "INSERT INTO power VALUES( NULL, \'%c\', %s, \'%s\', %s )", station, t, mac, power );
+                    sprintf( sql_in, "INSERT INTO power VALUES( NULL, %s, \'%c\', \'%s\', %s )", t, station, mac, power );
 
                     sqlite3_busy_timeout(db, 1000); // Sleeps for 1000ms if database is busy
                     rc = sqlite3_exec(db, sql_in, 0, 0, 0);

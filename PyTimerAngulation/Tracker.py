@@ -132,7 +132,7 @@ class Tracker:
                     l_tracked_objects[tracking_mac][recv_Station] = {}
 
 
-                l_tracked_objects[tracking_mac][recv_Station] = { "power": pwr, "distance": self.PowerToDistance(pwr) }
+                l_tracked_objects[tracking_mac][recv_Station] = { "power": pwr, "distance": PowerToDistance(pwr) }
 
         macs_to_remove = []
         for tracking_mac in l_tracked_objects.keys():
@@ -157,16 +157,13 @@ class Tracker:
 
     def getTrackedLocation( self, object_pwrs ):
         for recv_Station in object_pwrs.keys():        # Station that detects sample packet
-
-
-
-
+            pass
 
     @staticmethod
     def PowerToDistance( power ):
         if( power == None ):
             return None
-        return( (power+42.183)/(-5.6743) ) # Estimated linear function
+        return( (power)/(40) ) # Estimated linear function in feet
 
     @staticmethod
     def getTriangle( distances ):

@@ -8,18 +8,21 @@ class DuckieTrackingScene( QGraphicsScene ):
         super().__init__()
         self.scale = 30
 
-        tracker = Tracker()
-        station_layout = tracker.getStationLayout()
+        self.tracker = Tracker()
+
+    def update( self ):
+        self.clear()
+        station_layout = self.tracker.getStationLayout()
         self.drawTriangle( station_layout )
 
-        tracker.getTrackedObjectsLayout()
-        tracked_objects_layout = tracker.getTrackedObjectsLayout()
-        self.drawTrackedObjects( tracked_objects_layout )
-
+        # tracker.getTrackedObjectsLayout()
+        # tracked_objects_layout = tracker.getTrackedObjectsLayout()
+        # self.drawTrackedObjects( tracked_objects_layout )
 
     def drawTriangle( self, triangle ):
         # distance = [ AB, AC, BC ]
         distances = triangle[0]
+        self.log.debug("Distances -- AB: {0}, AC: {1}, BC: {2}".format( distances[0], distances[1], distances[2] ) )
         # distance = [ A, B, C ]
         angles = triangle[1]
 

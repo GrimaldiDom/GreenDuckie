@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5.Qt import *
-import sys
+import sys, time
 from datetime import datetime
 from DuckieGraphicsView import DuckieGraphicsView
 from Logs import Logs
@@ -40,9 +40,18 @@ class Ui_MainWindow( QMainWindow  ):
 
         QMetaObject.connectSlotsByName(self)
 
+        self.timer = QTimer()
+        self.timer.timeout.connect( self.graphicsView.update )
+        self.timer.start(10)
+
+
+    def Run( self ):
+        self.graphicsView.update()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     myapp = Ui_MainWindow()
     myapp.show()
+    myapp.Run()
     sys.exit(app.exec_())
