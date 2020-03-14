@@ -31,7 +31,7 @@ class Tracker:
         tracking = 0
         with open('MACS.ini', 'r') as f:
             for line in f:
-                if( line[0] == "\n"):
+                if( line[0] == "\n" or line[0] == "\n" ):
                     continue
 
                 if( line[0] == "[" ):
