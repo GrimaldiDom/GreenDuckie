@@ -17,7 +17,7 @@
 
 #define PORT 55123
 #define DATA_SIZE 40
-#define IP_RECV "127.0.0.1"
+#define IP_RECV "192.168.1.99"
 
 struct hci_request ble_hci_request(uint16_t ocf, int clen, void * status, void * cparam)
 {
@@ -175,9 +175,10 @@ int main()
                     ba2str(&(info->bdaddr), addr);
 
                     sprintf( data_to_send, "%1.1s/%10.10s.%4.4s/%17.17s/%3.3s", hostname, sec, us, addr, power );
+                    printf("%s\n", data_to_send)
                     offset = info->data + info->length + 2;
                     
-                    send(sock, data_to_send , strlen(data_to_send) , 0 );
+                    send(sock, data_to_send , DATA_SIZE, 0 );
                 }
             }
         }
