@@ -175,7 +175,7 @@ int main()
                     ba2str(&(info->bdaddr), addr);
 
                     sprintf( data_to_send, "%1.1s/%10.10s.%4.4s/%17.17s/%3.3s", hostname, sec, us, addr, power );
-                    printf("%s\n", data_to_send)
+                    printf("%s\n", data_to_send);
                     offset = info->data + info->length + 2;
                     
                     send(sock, data_to_send , DATA_SIZE, 0 );
