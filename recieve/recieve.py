@@ -35,9 +35,9 @@ def on_new_client(clientsocket,addr):
 
 def main():
     sql_list = ["DROP TABLE IF EXISTS power;",
-          "DROP TABLE IF EXISTS locations;",
+          "DROP TABLE IF EXISTS location;",
           "CREATE TABLE power( id INTEGER PRIMARY KEY AUTOINCREMENT, time INT, station TEXT, mac TEXT, power INT );",
-          "CREATE TABLE locations( id INT, mac TEXT, x INT, y INT );" ]
+          "CREATE TABLE location( id INTEGER PRIMARY KEY AUTOINCREMENT, mac TEXT, timestamp INT, x INT, y INT );" ]
 
     [ DB.sql_exec( sql ) for sql in sql_list ]
 

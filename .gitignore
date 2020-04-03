@@ -1,4 +1,5 @@
 recieve/recieve
 scan/scan
 *.o
+*.db
 __pycache__/

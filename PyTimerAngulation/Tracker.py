@@ -1,10 +1,11 @@
 import math
+import time
 from Database import Database
 from Logs import Logs
 
 class Tracker:
 
-    def __init__(self):
+    def __init__(self, DB):
         self.log = Logs().getLog()
         # Initializing MAC table
         self.STATION_MACS = {}
@@ -15,10 +16,12 @@ class Tracker:
         # Dictionary of things to be tracked with MACs as key and coordinantes as values
         self.tracked_objects = {}
 
-        self.DB = Database()
+        self.DB = DB
 
         # Running actual program
         self.initMacs()
+
+        self.last_id = 0
 
 
     def initMacs( self ):
@@ -26,6 +29,8 @@ class Tracker:
         # This function gets the necessary MAC addresses for the #
         # required objects in the demonstration                  #
         ##########################################################
+        self.log.debug("[+] Started initMACs...")
+
         current_dict = {}
         stations = 0
         tracking = 0
@@ -48,7 +53,7 @@ class Tracker:
                             self.stations = current_dict
 
                     else:
-                        self.log.error("Unknow ini header: ({})".format(line))
+                        self.log.error("[x] Unknown ini header: ({})".format(line))
                         raise
 
                     continue
@@ -60,25 +65,30 @@ class Tracker:
                 elif( tracking == 1 ):
                     self.TRACKING_MACS.append( line.strip("\n") )
 
-        self.log.debug( "Station Macs Found: {}".format( self.STATION_MACS ) )
-        self.log.debug( "Tracking Macs Found: {}".format( self.TRACKING_MACS ) )
+        self.log.debug( "[?] Station Macs Found: {}".format( self.STATION_MACS ) )
+        self.log.debug( "[?] Tracking Macs Found: {}".format( self.TRACKING_MACS ) )
 
-    def getStationLayout( self ):
+        self.log.debug("[-] Completed initMACs...")
+
+    def getStationObjectsPositions( self ):
         #############################################################################################
-        # This function return a list of 2 lists consisting of distances and angles respectively.   #
-        # These are determined from the database and MACs of the stations1                          #
+        # This function inserts the positional data of each station into the locations table in the #
+        # shared SQL database. Also ensures that all stations have been found due to while loop not #
+        # exiting until all are found.                                                              #
         #############################################################################################
+        self.log.debug("[+] Started getStationLayout...")
         stations = {}
 
         while( True ):
             for recv_Station in self.STATION_MACS.keys():        # Station that detects sample packet
                 for emit_Station in self.STATION_MACS.keys():    # Station that emits sample packet
+                    if( recv_Station == emit_Station ):
+                        continue
+
                     # One of these on each run should not find anything since it's trying to find its own blutooth packets
-                    entry = self.DB.getNewestEntryByMac( recv_Station, self.STATION_MACS[ emit_Station ] )
+                    entry = self.DB.getNewestPowerByMac( recv_Station, self.STATION_MACS[ emit_Station ] )
                     if( entry == None ):
-                        pwr = 0
-                    else:
-                        pwr = entry["power"]
+                        break
 
                     if( recv_Station not in stations.keys() ):
                         stations[recv_Station] = {}
@@ -86,84 +96,100 @@ class Tracker:
                     if( emit_Station not in stations[recv_Station].keys() ):
                         stations[recv_Station][emit_Station] = {}
 
-                    stations[recv_Station][emit_Station] = { "power": pwr, "distance": self.PowerToDistance(pwr) }
+                    stations[recv_Station][emit_Station] = { "power": entry["power"] }
 
+            done = True
+            for recv_Station in self.STATION_MACS.keys():        # Station that detects sample packet
 
-            # There should only ever be 4 elements with 0 as their power, and those should be the ones
-            # trying to measure thier own power.
-            # This if statement counts the number of 0s in the powers of the dictionary and breaks if the number of zeros is 4
-            if( len( [ y for x in stations.keys() for y in stations[x].keys() if stations[x][y]["power"] == 0] ) == 3 ):
-                self.log.debug( stations )
+                if recv_Station not in stations.keys():
+                    done = False
+                    break
+
+                for emit_Station in self.STATION_MACS.keys():    # Station that emits sample packet
+                    if( recv_Station == emit_Station ):
+                        continue
+
+                    if emit_Station not in stations[recv_Station].keys():
+                        done = False
+                        break
+
+            if( done == True ):
                 break
+
 
         # Gets the keys in an array so we can manually pull out the 3 distances separately
         nodes = [ x for x in self.STATION_MACS.keys() ]
+        self.log.debug( "[?] Nodes: {}".format( nodes ) )
 
         # Get the distances between the 3 stations
         ## I feel like it would be possible to average the 2 measurements (AB & BA) together to get a better reading
         distances = [
-            stations[nodes[0]][nodes[1]]["distance"],
-            stations[nodes[0]][nodes[2]]["distance"],
-            stations[nodes[1]][nodes[2]]["distance"],
+            self.PowerToDistance( stations[nodes[0]][nodes[1]]["power"] ), # A->B
+            self.PowerToDistance( stations[nodes[0]][nodes[2]]["power"] ), # A->C
+            self.PowerToDistance( stations[nodes[1]][nodes[2]]["power"] ), # B->C
         ]
 
-        # Contains array of 3 angles to create triangle
-        angles = self.getTriangle( distances )
+        self.log.debug( "[?] Distances found: {}".format( distances ) )
 
-        self.node_triangle = [ distances, angles ]
-        return( self.node_triangle )
+        for i, station in enumerate( stations.keys() ):
+            if( i == 0 ):
+                pos = [ 0,0 ]
+            elif( i == 1 ):
+                pos = [ 0, distances[1] ]
+            elif( i == 2 ):
+                angles = self.getTriangle( distances )
+                # Distances[1] is AC because C is third point
+                # Angle[0] is angle A
+                pos = self.getThirdPointCoordinate( distances[2], angles[0] )
 
-    def getTrackedObjectsLayout( self ):
-        l_tracked_objects = {}
+            self.DB.insertIntoLocations( station, *pos  )
+
+        self.log.debug("[-] Completed getStationLayout...")
+        return
+
+    def getTrackedObjectsPositions( self, track_unknown=False ):
+        self.log.debug("[+] Started getTrackedObjectsPositions...")
+        if( track_unknown ):
+            new_macs, self.last_id = self.DB.getNewUnknownMacs( self.TRACKING_MACS + list( self.STATION_MACS.values() ), self.last_id )
+            self.TRACKING_MACS += new_macs
 
         for tracking_mac in self.TRACKING_MACS:          # MAC we are tracking
-            for recv_Station in self.STATION_MACS.keys():        # Station that detects sample packet
-                # One of these on each run should not find anything since it's trying to find its own blutooth packets
-                entry = self.DB.getNewestEntryByMac( recv_Station, tracking_mac )
-                if( entry == None ):
-                    pwr = None
-                else:
-                    pwr = entry["power"]
+            args = self.getTrilaterationArguments( tracking_mac )
+            if( args == None ):
+                continue
 
-                if( tracking_mac not in l_tracked_objects.keys() ):
-                    l_tracked_objects[tracking_mac] = {}
+            tracked_position = self.Trilaterate( *args )
+            self.DB.insertIntoLocations( tracking_mac, *tracked_position )
 
-                if( recv_Station not in l_tracked_objects[tracking_mac].keys() ):
-                    l_tracked_objects[tracking_mac][recv_Station] = {}
+        self.log.debug("[-] Completed getTrackedObjectsPositions...")
 
+    def getTrilaterationArguments( self, tracking_mac ):
+        args = [] # Arguments to be passed into the trilateration method
+        for recv_Station in self.STATION_MACS.keys():        # Station that detects sample packet
+            # One of these on each run should not find anything since it's trying to find its own blutooth packets
+            entry = self.DB.getNewestPowerByMac( recv_Station, tracking_mac )
+            if( entry == None ):
+                return( None )
 
-                l_tracked_objects[tracking_mac][recv_Station] = { "power": pwr, "distance": PowerToDistance(pwr) }
+            now = time.time()
+            if( now - entry["time"] > 3 ): # If more than 3 seconds has passed since this measurement has been taken, meaning it hasn't been detected again in 3 seconds
+                return( None )
 
-        macs_to_remove = []
-        for tracking_mac in l_tracked_objects.keys():
-            for recv_Station in l_tracked_objects[tracking_mac].keys():
-                # if any of the recieving stations don't have a power for an object to track, it can't be tracked
-                if l_tracked_objects[ tracking_mac ][recv_Station]["power"] == None:
-                    macs_to_remove.append( tracking_mac )
-                    macs_to_remove = list( set( macs_to_remove ) )
+            response = self.DB.getNewestLocationByMac( recv_Station )
+            args.append( response["x"] )
+            args.append( response["y"] )
+            args.append( self.PowerToDistance( entry["power"] ) )
 
-        for mac in macs_to_remove:
-            del l_tracked_objects[mac]
-
-        for tracking_mac in l_tracked_objects.keys():
-            # Gets the keys in an array so we can manually pull out the 3 distances separately
-            nodes = [ x for x in self.STATION_MACS.keys() ]
-
-            position = self.getTrackedLocation( l_tracked_objects[tracking_mac], self.node_triangle )
-
-            self.tracked_objects[tracking_mac] = position
-
-        return( self.tracked_objects )
-
-    def getTrackedLocation( self, object_pwrs ):
-        for recv_Station in object_pwrs.keys():        # Station that detects sample packet
-            pass
+        return( args )
 
     @staticmethod
     def PowerToDistance( power ):
         if( power == None ):
             return None
-        return( (power)/(40) ) # Estimated linear function in feet
+        if power == 0:
+            power = 1
+
+        return( 2**( (255-power)/32 ) )
 
     @staticmethod
     def getTriangle( distances ):
@@ -171,11 +197,48 @@ class Tracker:
         a = distances[0]
         b = distances[1]
         c = distances[2]
+
+        # Acos has bounds -1 to 1 so i mod it to keep it in bounds
+        innerA = ( ( (b*b+c*c-a*a)/(2*b*c) + 1 ) % 2 ) - 1
+        innerB = ( ( (a*a+c*c-b*b)/(2*a*c)/(2*b*c) + 1 ) % 2 ) - 1
+        innerC = ( ( (a*a+b*b-c*c)/(2*a*b)/(2*b*c) + 1 ) % 2 ) - 1
         return( [
-                    math.cos( (a*a+b*b-c*c)/(2*a*b) ),
-                    math.cos( (a*a+c*c-b*b)/(2*a*c) ),
-                    math.cos( (b*b+c*c-a*a)/(2*b*c) ),
+                    math.acos( innerA ), # Angle A
+                    math.acos( innerB ), # Angle B
+                    math.acos( innerC ), # Angle C
             ] )
+
+    @staticmethod
+    def getThirdPointCoordinate( AC, A ):
+        # # Thank you sir
+        # # https://math.stackexchange.com/questions/543961/determine-third-point-of-triangle-when-two-points-and-all-sides-are-known
+        # coord = [0,0]
+
+        # if( AB > 0 ):
+            # coord[0] = (BC*BC - AC*AC + AB*AB)/(2*AB)
+
+        # coord[1] = math.sqrt( abs( BC*BC - coord[0]*coord[0]  ) )
+
+        # return( coord )
+
+        # Trying this from user Shivam Agrawal
+        # https://math.stackexchange.com/questions/143932/calculate-point-given-x-y-angle-and-distance
+        # 0 or x1 but since calculating from A station at 0,0 can leave as 0
+        x3 = 0 + ( AC * math.cos( A ) )
+        y3 = 0 + ( AC * math.sin( A ) )
+        return( [ x3, y3 ] )
+
+    @staticmethod
+    def Trilaterate( x1, y1, r1, x2, y2, r2, x3, y3, r3 ):
+        A = 2*x2 - 2*x1
+        B = 2*y2 - 2*y1
+        C = r1**2 - r2**2 - x1**2 + x2**2 - y1**2 + y2**2
+        D = 2*x3 - 2*x2
+        E = 2*y3 - 2*y2
+        F = r2**2 - r3**2 - x2**2 + x3**2 - y2**2 + y3**2
+        x = (C*E - F*B) / (E*A - B*D)
+        y = (C*D - A*F) / (B*D - A*E)
+        return [x,y]
 
     @staticmethod
     def getAngle( a, b, c ):
